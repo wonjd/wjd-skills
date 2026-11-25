@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회의실 예약</title>
+<style>
+  body { font-family: "Malgun Gothic", system-ui, sans-serif; max-width: 720px; margin: 32px auto; padding: 0 16px; color: #1f2328; }
+  h1 { font-size: 22px; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; border: 1px solid #d0d7de; border-radius: 8px; }
+  label { display: grid; gap: 4px; font-size: 13px; color: #57606a; }
+  input, select, button { font: inherit; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; }
+  .wide { grid-column: 1 / -1; }
+  button.primary { background: #1f6feb; color: #fff; border-color: #1f6feb; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #d0d7de; font-size: 14px; }
+  td button { padding: 4px 10px; cursor: pointer; }
+  .empty { color: #57606a; padding: 16px 8px; }
+</style>
+</head>
+<body>
+<h1>회의실 예약</h1>
+
+<form id="form">
+  <label>회의실
+    <select id="room">
+      <option>대회의실 (12명)</option>
+      <option>소회의실 A (6명)</option>
+      <option>소회의실 B (4명)</option>
+    </select>
+  </label>
+  <label>날짜 <input type="date" id="date" required></label>
+  <label>시작 <input type="time" id="start" step="1800" required></label>
+  <label>끝 <input type="time" id="end" step="1800" required></label>
+  <label>예약자 <input id="who" placeholder="이름" required></label>
+  <label>목적 <input id="why" placeholder="예: 주간 회의"></label>
+  <button class="primary wide">예약</button>
+</form>
+
+<h2 style="font-size:16px;margin-top:28px">예약 목록 <input type="date" id="view"></h2>
+<table>
+  <thead><tr><th>회의실</th><th>시간</th><th>예약자</th><th>목적</th><th></th></tr></thead>
+  <tbody id="list"></tbody>
+</table>
+
+<script>
+  const KEY = 'meeting-room-bookings';
+  const load = () => JSON.parse(localStorage.getItem(KEY) || '[]');
+  const save = (rows) => localStorage.setItem(KEY, JSON.stringify(rows));
+  const $ = (id) => document.getElementById(id);
+  const today = new Date().toISOString().slice(0, 10);
+  $('date').value = today;
+  $('view').value = today;
+
+  function render() {
+    const rows = load().filter((r) => r.date === $('view').value)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    $('list').innerHTML = rows.length ? '' : '<tr><td class="empty" colspan="5">예약이 없습니다.</td></tr>';
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      for (const text of [r.room, r.start + ' ~ ' + r.end, r.who, r.why]) {
+        const td = document.createElement('td');
+        td.textContent = text;
+        tr.append(td);
+      }
+      const td = document.createElement('td');
+      const del = document.createElement('button');
+      del.textContent = '취소';
+      del.onclick = () => { save(load().filter((x) => x.id !== r.id)); render(); };
+      td.append(del);
+      tr.append(td);
+      $('list').append(tr);
+    }
+  }
+
+  $('form').onsubmit = (e) => {
+    e.preventDefault();
+    const rows = load();
+    rows.push({
+      id: Date.now(), room: $('room').value, date: $('date').value,
+      start: $('start').value, end: $('end').value, who: $('who').value, why: $('why').value,
+    });
+    save(rows);
+    $('view').value = $('date').value;
+    render();
+  };
+  $('view').onchange = render;
+  render();
+</script>
+</body>
+</html>
